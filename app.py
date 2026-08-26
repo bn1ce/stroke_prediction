@@ -78,12 +78,22 @@ if st.button("Predict Stroke Risk", type="primary"):
     
     # --- 6. DISPLAY RESULTS ---
     st.markdown("---")
-    if is_at_risk:
+    
+    # Define our new thresholds
+    HIGH_RISK_THRESHOLD = 0.30
+    MODERATE_RISK_THRESHOLD = 0.15
+    
+    if stroke_prob >= HIGH_RISK_THRESHOLD:
         st.error(f"### ⚠️ High Risk Detected")
         st.write(f"The model estimates a **{stroke_prob * 100:.1f}%** probability of a stroke.")
-        st.write(f"*(This exceeds the strict medical threshold of {CUSTOM_THRESHOLD * 100:.0f}%.)*")
-        st.info("Recommendation: Please consult a healthcare professional for a formal medical assessment.")
+        st.info("Recommendation: Please consult a healthcare professional immediately for a formal medical assessment.")
+        
+    elif stroke_prob >= MODERATE_RISK_THRESHOLD:
+        st.warning(f"### 🟡 Moderate Risk Detected")
+        st.write(f"The model estimates a **{stroke_prob * 100:.1f}%** probability of a stroke.")
+        st.write("*(This is significantly higher than the baseline average of ~5%.)*")
+        st.info("Recommendation: Consider discussing lifestyle changes and monitoring with your doctor.")
+        
     else:
         st.success(f"### ✅ Low Risk")
         st.write(f"The model estimates a **{stroke_prob * 100:.1f}%** probability of a stroke.")
-        st.write(f"*(This is below the risk threshold of {CUSTOM_THRESHOLD * 100:.0f}%.)*")
