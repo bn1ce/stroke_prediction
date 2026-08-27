@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import joblib
 import os
+from tensorflow import keras
 
 # --- 1. PAGE CONFIGURATION & CUSTOM CSS ---
 st.set_page_config(page_title="Stroke Risk Estimator", layout="wide", initial_sidebar_state="collapsed")
@@ -46,22 +47,25 @@ def load_artifacts(model_name):
             model = joblib.load('stroke_rf_model.pkl')
             model_columns = joblib.load('model_columns.pkl') # RF's columns
             scaler = joblib.load('stroke_scaler.pkl')        # RF's scaler
+            model_type = "sklearn"
             
         elif model_name == "Support Vector Machine (SVM)":
             model = joblib.load('stroke_svm_model.pkl')
             model_columns = joblib.load('svm_columns.pkl')   # SVM's columns
             scaler = None                                    # SVM pipeline handles its own scaling
+            model_type = "sklearn"
             
         elif model_name == "Artificial Neural Network (ANN)":
-            model = joblib.load('stroke_ann_model.pkl')
-            model_columns = joblib.load('model_columns.pkl') # Placeholder: update if ANN differs
-            scaler = joblib.load('stroke_scaler.pkl')        # Placeholder
-            
-        return model, scaler, model_columns, "Success"
-    except Exception as e:
-        return None, None, None, f"Missing files or error loading {model_name}: {str(e)}"
+            model = keras.models.load_model('stroke_ann_smote.keras')
+            model_columns = joblib.load('ann_columns.pkl') # Placeholder: update if ANN differs
+            scaler = joblib.load('ann_scaler.pkl')        # Placeholder
+            model_type = "keras"
 
-model, scaler, model_columns, load_status = load_artifacts(model_choice)
+        return model, scaler, model_columns, model_type, "Success"
+    except Exception as e:
+        return None, None, None, None, f"Missing files or error loading {model_name}: {str(e)}"
+
+model, scaler, model_columns, model_type, load_status = load_artifacts(model_choice)
 
 if load_status != "Success":
     st.warning(f"⚠️ **{load_status}**")
@@ -133,7 +137,28 @@ if scaler is not None:
     df_patient[numeric_cols] = scaler.transform(df_patient[numeric_cols])
 
 # Predict
-stroke_prob = model.predict_proba(df_patient)[0][1]
+# stroke_prob = model.predict_proba(df_patient)[0][1]
+# prob_pct = stroke_prob * 100
+# --- PREDICT ---
+
+if model_type == "keras":
+
+    # ANN outputs a probability directly
+    stroke_prob = float(
+        model.predict(
+            df_patient,
+            verbose=0
+        )[0][0]
+    )
+
+else:
+
+    # Random Forest / SVM
+    stroke_prob = model.predict_proba(
+        df_patient
+    )[0][1]
+
+
 prob_pct = stroke_prob * 100
 
 # Determine Risk Tier for Styling
@@ -199,7 +224,7 @@ st.write("")
 model_metrics = {
     "Random Forest": {"acc": "76.3%", "rec": "66.0%", "prec": "12.8%", "auc": "0.806"},
     "Support Vector Machine (SVM)": {"acc": "73.2%", "rec": "78.4%", "prec": "11.5%", "auc": "0.760"}, # Replace with your actual SVM stats
-    "Artificial Neural Network (ANN)": {"acc": "81.1%", "rec": "55.0%", "prec": "14.2%", "auc": "0.785"} # Replace with your actual ANN stats
+    "Artificial Neural Network (ANN)": {"acc": "82.6%", "rec": "62.0%", "prec": "16.32%", "auc": "0.807"} # Replace with your actual ANN stats
 }
 
 curr_metrics = model_metrics[model_choice]
