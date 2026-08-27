@@ -222,9 +222,9 @@ st.write("")
 
 # Dynamic metrics based on which model is selected in the dropdown
 model_metrics = {
-    "Random Forest": {"acc": "67.8%", "rec": "80.0%", "prec": "12.8%", "auc": "0.806"},
-    "Support Vector Machine (SVM)": {"acc": "73.2%", "rec": "78.4%", "prec": "11.5%", "auc": "0.760"}, # Replace with your actual SVM stats
-    "Artificial Neural Network (ANN)": {"acc": "82.6%", "rec": "62.0%", "prec": "16.32%", "auc": "0.807"} # Replace with your actual ANN stats
+    "Random Forest": {"acc": "67.8%", "rec": "80.0%", "prec": "11.1%", "auc": "0.811"},
+    "Support Vector Machine (SVM)": {"acc": "73.3%", "rec": "80.0%", "prec": "13.2%", "auc": "0.843"}, 
+    "Artificial Neural Network (ANN)": {"acc": "82.6%", "rec": "62.0%", "prec": "16.32%", "auc": "0.807"} 
 }
 
 curr_metrics = model_metrics[model_choice]
