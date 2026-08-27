@@ -39,39 +39,32 @@ with col_head_right:
 st.markdown("---")
 
 # --- 3. LOAD ARTIFACTS ---
-# Map the dropdown choices to your actual saved file names
-model_files = {
-    "Random Forest": "stroke_rf_model.pkl",
-    "Support Vector Machine (SVM)": "stroke_svm_model.pkl",
-    "Artificial Neural Network (ANN)": "stroke_ann_model.pkl"
-}
-
 @st.cache_resource
 def load_artifacts(model_name):
-    # Load Scaler and Columns (Shared across all models)
     try:
-        scaler = joblib.load('stroke_scaler.pkl')
-        model_columns = joblib.load('model_columns.pkl')
-    except Exception:
-        return None, None, None, "Missing `stroke_scaler.pkl` or `model_columns.pkl`."
-
-    # Load the specific model chosen by the user
-    model_filename = model_files[model_name]
-    if not os.path.exists(model_filename):
-        return None, None, None, f"Model file `{model_filename}` not found. Please train and save it first."
-    
-    try:
-        model = joblib.load(model_filename)
+        if model_name == "Random Forest":
+            model = joblib.load('stroke_rf_model.pkl')
+            model_columns = joblib.load('model_columns.pkl') # RF's columns
+            scaler = joblib.load('stroke_scaler.pkl')        # RF's scaler
+            
+        elif model_name == "Support Vector Machine (SVM)":
+            model = joblib.load('stroke_svm_model.pkl')
+            model_columns = joblib.load('svm_columns.pkl')   # SVM's columns
+            scaler = None                                    # SVM pipeline handles its own scaling
+            
+        elif model_name == "Artificial Neural Network (ANN)":
+            model = joblib.load('stroke_ann_model.pkl')
+            model_columns = joblib.load('model_columns.pkl') # Placeholder: update if ANN differs
+            scaler = joblib.load('stroke_scaler.pkl')        # Placeholder
+            
         return model, scaler, model_columns, "Success"
     except Exception as e:
-        return None, None, None, str(e)
+        return None, None, None, f"Missing files or error loading {model_name}: {str(e)}"
 
 model, scaler, model_columns, load_status = load_artifacts(model_choice)
 
-# Stop execution gracefully if a team member hasn't uploaded their model yet
 if load_status != "Success":
     st.warning(f"⚠️ **{load_status}**")
-    st.info("Make sure your Jupyter notebook exports the model using `joblib.dump(model, 'filename.pkl')` and the file is in this folder.")
     st.stop()
 
 
@@ -128,15 +121,16 @@ input_data = {
 df_patient = pd.DataFrame([input_data])
 df_patient = pd.get_dummies(df_patient, columns=['work_type', 'Residence_type', 'smoking_status'])
 
-# Ensure all columns from training are present
+# Ensure all columns from the chosen model's training set are present
 for col in model_columns:
     if col not in df_patient.columns:
         df_patient[col] = 0
 df_patient = df_patient[model_columns]
 
-# Scale
-numeric_cols = ['age', 'avg_glucose_level', 'bmi']
-df_patient[numeric_cols] = scaler.transform(df_patient[numeric_cols])
+# Scale ONLY if a standalone scaler was loaded (Random Forest / ANN)
+if scaler is not None:
+    numeric_cols = ['age', 'avg_glucose_level', 'bmi']
+    df_patient[numeric_cols] = scaler.transform(df_patient[numeric_cols])
 
 # Predict
 stroke_prob = model.predict_proba(df_patient)[0][1]
