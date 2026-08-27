@@ -45,8 +45,8 @@ def load_artifacts(model_name):
     try:
         if model_name == "Random Forest":
             model = joblib.load('stroke_rf_model.pkl')
-            model_columns = joblib.load('model_columns.pkl') # RF's columns
-            scaler = joblib.load('stroke_scaler.pkl')        # RF's scaler
+            model_columns = joblib.load('rf_columns.pkl') # RF's columns
+            scaler = joblib.load('rf_scaler.pkl')        # RF's scaler
             model_type = "sklearn"
             
         elif model_name == "Support Vector Machine (SVM)":
