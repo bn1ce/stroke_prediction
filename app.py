@@ -58,7 +58,7 @@ def load_artifacts(model_name):
         elif model_name == "Support Vector Machine (SVM)":
             model = joblib.load('stroke_svm_model.pkl')
             model_columns = joblib.load('svm_columns.pkl')   
-            scaler = None                                    
+            scaler = joblib.load('svm_scaler.pkl')                                    
             model_type = "sklearn"
             
         elif model_name == "Artificial Neural Network (ANN)":
@@ -147,7 +147,7 @@ input_data = {
     'age': age,
     'avg_glucose_level': avg_glucose_level,
     'bmi': bmi,
-    'gender': 1 if gender == "Male" else 0,
+    'gender': 0 if gender == "Male" else 1,
     'hypertension': 1 if hypertension == "Yes" else 0,
     'heart_disease': 1 if heart_disease == "Yes" else 0,
     'ever_married': 1 if ever_married == "Yes" else 0,
