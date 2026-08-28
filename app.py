@@ -241,7 +241,7 @@ st.markdown("---")
 
 # Dict containing test metrics for all models
 model_metrics = {
-    "Random Forest": {"Accuracy": "67.8%", "Recall (Stroke)": "80.0%", "Precision (Stroke)": "11.1%", "ROC-AUC": "0.811"},
+    "Random Forest": {"Accuracy": "67.8%", "Recall (Stroke)": "84.0%", "Precision (Stroke)": "11.6%", "ROC-AUC": "0.811"},
     "Support Vector Machine (SVM)": {"Accuracy": "74.7%", "Recall (Stroke)": "72.0%", "Precision (Stroke)": "12.8%", "ROC-AUC": "0.816"}, 
     "Artificial Neural Network (ANN)": {"Accuracy": "76.5%", "Recall (Stroke)": "64.0%", "Precision (Stroke)": "12.6%", "ROC-AUC": "0.780"} 
 }
