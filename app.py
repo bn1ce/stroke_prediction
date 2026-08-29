@@ -2,7 +2,11 @@ import streamlit as st
 import pandas as pd
 import joblib
 import os
+import sys
 from tensorflow import keras
+from bmi_imputer import BMIDecisionTreeImputer
+
+sys.modules['__main__'].BMIDecisionTreeImputer = BMIDecisionTreeImputer
 
 # --- 1. PAGE CONFIGURATION & CUSTOM CSS ---
 st.set_page_config(page_title="Stroke Risk Prediction Engine", layout="wide")
@@ -49,36 +53,54 @@ st.markdown("---")
 @st.cache_resource
 def load_artifacts(model_name):
     try:
+        bmi_imputer = None  # only set for models whose imputation isn't already baked into `model`
+
         if model_name == "Random Forest":
             model = joblib.load('stroke_rf_model.pkl')
             model_columns = joblib.load('rf_columns.pkl') 
             scaler = joblib.load('rf_scaler.pkl')        
             model_type = "sklearn"
+            # Random Forest was trained on RAW (unscaled) features -- rf_scaler.pkl is fit on
+            # X_train only for display/UI purposes and must NOT be applied before predicting,
+            # or the model would see values it never trained on.
+            needs_scaling = False
             
         elif model_name == "Support Vector Machine (SVM)":
             model = joblib.load('stroke_svm_model.pkl')
             model_columns = joblib.load('svm_columns.pkl')   
             scaler = joblib.load('svm_scaler.pkl')                                    
             model_type = "sklearn"
+            # SVM's BMI imputation AND scaling both live INSIDE the exported pipeline itself
+            # ('bmi_imputer' and 'preprocessor' steps), so predict_proba() already handles both
+            # internally. Imputing or scaling manually here as well would double-process the input.
+            needs_scaling = False
             
         elif model_name == "Artificial Neural Network (ANN)":
             model = keras.models.load_model('stroke_ann_smote.keras')
             model_columns = joblib.load('ann_columns.pkl') 
             scaler = joblib.load('ann_scaler.pkl')        
+            bmi_imputer = joblib.load('ann_bmi_imputer.pkl')
             model_type = "keras"
+            # The ANN was trained on features scaled OUTSIDE the Keras model, so we must
+            # replicate that scaling manually before calling predict.
+            needs_scaling = True
 
-        return model, scaler, model_columns, model_type, "Success"
+        return model, scaler, model_columns, model_type, needs_scaling, bmi_imputer, "Success"
     except Exception as e:
-        return None, None, None, None, f"Error: {str(e)}"
+        return None, None, None, None, None, None, f"Error: {str(e)}"
 
 def get_prediction(m_name, inp_data):
     """Loads artifacts and returns the stroke probability percentage for a given model."""
-    m, s, m_cols, m_type, status = load_artifacts(m_name)
+    m, s, m_cols, m_type, needs_scaling, bmi_imputer, status = load_artifacts(m_name)
     if status != "Success":
         return None, status
     
     # Format and Encode
     df_p = pd.DataFrame([inp_data])
+
+    if bmi_imputer is not None:
+        df_p = bmi_imputer.transform(df_p)
+
     df_p = pd.get_dummies(df_p, columns=['work_type', 'Residence_type', 'smoking_status'])
     
     # Align Columns
@@ -86,9 +108,10 @@ def get_prediction(m_name, inp_data):
         if col not in df_p.columns:
             df_p[col] = 0
     df_p = df_p[m_cols]
-    
-    # Scale if necessary
-    if s is not None:
+
+    # Only scale for models that were actually trained on scaled features (ANN only).
+    # SVM scales internally inside its exported pipeline; Random Forest needs raw features.
+    if needs_scaling and s is not None:
         numeric_cols = ['age', 'avg_glucose_level', 'bmi']
         df_p[numeric_cols] = s.transform(df_p[numeric_cols])
         
@@ -241,8 +264,8 @@ st.markdown("---")
 
 # Dict containing test metrics for all models
 model_metrics = {
-    "Random Forest": {"Accuracy": "67.8%", "Recall (Stroke)": "84.0%", "Precision (Stroke)": "11.6%", "ROC-AUC": "0.811"},
-    "Support Vector Machine (SVM)": {"Accuracy": "74.7%", "Recall (Stroke)": "72.0%", "Precision (Stroke)": "12.8%", "ROC-AUC": "0.816"}, 
+    "Random Forest": {"Accuracy": "80.2%", "Recall (Stroke)": "66.0%", "Precision (Stroke)": "15.1%", "ROC-AUC": "0.793"},
+    "Support Vector Machine (SVM)": {"Accuracy": "71.7%", "Recall (Stroke)": "82.0%", "Precision (Stroke)": "12.8%", "ROC-AUC": "0.840"}, 
     "Artificial Neural Network (ANN)": {"Accuracy": "76.5%", "Recall (Stroke)": "64.0%", "Precision (Stroke)": "12.6%", "ROC-AUC": "0.780"} 
 }
 
